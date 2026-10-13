@@ -1,0 +1,39 @@
+name: Publish field-road app
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare and test static app
+        run: |
+          unzip -q source-bundle.zip -d .
+          mkdir -p dist
+          unzip -q runtime-assets.zip -d dist
+          cp -R src/. dist/
+          node --check dist/app.mjs
+          node test-engine.mjs
+          node test-interference.mjs
+          node test-auto-traffic.mjs
+          node test-evidence.mjs
+          test -f dist/model/model.json
+          test -f dist/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+      - uses: actions/deploy-pages@v4
+        id: deployment
